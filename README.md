@@ -30,7 +30,7 @@ Set your Sophnet API key using one of:
 | GLM-5.1 | 200K | ¥8 / ¥28 |
 | MiniMax-M3 | 512K | ¥2.1 / ¥8.4 |
 | Kimi-K2.6 | 256K | ¥6.5 / ¥27 |
-| qwen3.7-max | 524K | ¥6 / ¥18 |
+| qwen3.7-max | 200K | ¥6 / ¥18 |
 
 ## License
 

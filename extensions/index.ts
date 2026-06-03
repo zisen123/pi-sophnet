@@ -139,7 +139,7 @@ const SOPHNET_MODELS = [
 	},
 	{
 		id: "qwen3.7-max", name: "qwen3.7-max", reasoning: true, input: ["text"] as const,
-		contextWindow: 524_288, maxTokens: 65536,
+		contextWindow: 200_000, maxTokens: 65536,
 		cost: { input: 6, output: 18, cacheRead: 0, cacheWrite: 0 },
 		compat: SHARED_COMPAT, thinkingLevelMap: QWEN_THINKING,
 	},
