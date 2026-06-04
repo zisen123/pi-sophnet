@@ -11,7 +11,8 @@
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { extname, join } from "node:path";
+import { Type } from "typebox";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // API Key Resolution
@@ -147,6 +148,95 @@ const SOPHNET_MODELS = [
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// Vision / Image Understanding
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const VISION_MODELS = [
+	"qwen3-vl-flash",
+	"qwen3-vl-plus",
+	"Qwen3-VL-235B-A22B-Instruct",
+	"GLM-4.6V",
+	"GLM-5V-Turbo",
+	"Doubao-Seed-1.6-vision",
+] as const;
+
+const DEFAULT_VISION_MODEL = "qwen3-vl-flash";
+const VISION_API_URL = "https://www.sophnet.com/api/open-apis/v1/chat/completions";
+
+const MIME_MAP: Record<string, string> = {
+	".png": "image/png",
+	".jpg": "image/jpeg",
+	".jpeg": "image/jpeg",
+	".gif": "image/gif",
+	".webp": "image/webp",
+	".bmp": "image/bmp",
+};
+
+function encodeImage(filePath: string): { mime: string; dataUrl: string } {
+	const ext = extname(filePath).toLowerCase();
+	const mime = MIME_MAP[ext];
+	if (!mime) {
+		const supported = Object.keys(MIME_MAP).join(", ");
+		throw new Error(`Unsupported image format: ${ext}. Supported: ${supported}`);
+	}
+	const data = readFileSync(filePath);
+	const base64 = data.toString("base64");
+	return { mime, dataUrl: `data:${mime};base64,${base64}` };
+}
+
+interface VisionResult {
+	text: string;
+	imageTokens: number;
+	totalTokens: number;
+}
+
+async function describeImage(
+	imagePath: string,
+	model: string,
+	prompt: string,
+	apiKey: string,
+	signal?: AbortSignal,
+): Promise<VisionResult> {
+	const { dataUrl } = encodeImage(imagePath);
+
+	const body = JSON.stringify({
+		model,
+		messages: [{
+			role: "user" as const,
+			content: [
+				{ type: "text", text: prompt },
+				{ type: "image_url", image_url: { url: dataUrl, detail: "high" } },
+			],
+		}],
+		stream: false,
+		max_tokens: 4096,
+	});
+
+	const res = await fetch(VISION_API_URL, {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+			Authorization: `Bearer ${apiKey}`,
+		},
+		body,
+		signal,
+	});
+
+	if (!res.ok) {
+		const errText = await res.text().catch(() => "");
+		throw new Error(`Vision API error (${res.status}): ${errText.slice(0, 200)}`);
+	}
+
+	const data = await res.json() as any;
+	const text: string = data.choices?.[0]?.message?.content ?? "";
+	const usage = data.usage ?? {};
+	const imageTokens: number = usage.prompt_tokens_details?.image_tokens ?? 0;
+	const totalTokens: number = usage.total_tokens ?? 0;
+
+	return { text, imageTokens, totalTokens };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // Extension Entry Point
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -161,6 +251,84 @@ export default function (pi: ExtensionAPI) {
 		api: "openai-completions",
 		compat: SHARED_COMPAT,
 		models: SOPHNET_MODELS,
+	});
+
+	// ── describe_image Tool ───────────────────────────────────────────────
+	pi.registerTool({
+		name: "describe_image",
+		label: "Describe Image",
+		description: "使用 Sophnet 视觉模型理解/描述图片内容。当用户提到或引用图片文件（png/jpg/jpeg/gif/webp/bmp）时调用此工具。",
+		promptSnippet: "Describe an image using sophnet vision model",
+		promptGuidelines: [
+			"Use describe_image whenever the user mentions or references an image file (png, jpg, jpeg, gif, webp, bmp). Always look at images the user asks about rather than guessing their content.",
+		],
+		parameters: Type.Object({
+			path: Type.String({ description: "图片文件的本地路径" }),
+			model: Type.Optional(Type.String({ description: `视觉模型名称，可选: ${VISION_MODELS.join(", ")}。默认 ${DEFAULT_VISION_MODEL}` })),
+			prompt: Type.Optional(Type.String({ description: "对图片的提问或分析指令，默认请模型详细描述图片内容" })),
+		}),
+		async execute(_toolCallId, params, signal, onUpdate, _ctx) {
+			const key = resolveApiKey();
+			if (!key) {
+				return {
+					content: [{ type: "text", text: "错误：未配置 Sophnet API Key。请设置 SOPHNET_API_KEY 环境变量或运行 /login sophnet。" }],
+					details: {},
+				};
+			}
+
+			const model = params.model ?? DEFAULT_VISION_MODEL;
+			const prompt = params.prompt ?? "请详细描述这张图片的内容，包括其中的文字、界面元素、图表数据等所有可见信息。";
+
+			onUpdate?.({ content: [{ type: "text", text: `正在使用 ${model} 分析图片...` }] });
+
+			try {
+				const result = await describeImage(params.path, model, prompt, key, signal);
+				const footer = `\n\n---\n*(${model}, 图片token: ${result.imageTokens}, 总token: ${result.totalTokens})*`;
+				return {
+					content: [{ type: "text", text: result.text + footer }],
+					details: { model, imageTokens: result.imageTokens, totalTokens: result.totalTokens },
+				};
+			} catch (err: any) {
+				return {
+					content: [{ type: "text", text: `图片分析失败: ${err.message}` }],
+					details: { error: err.message },
+					isError: true,
+				};
+			}
+		},
+	});
+
+	// ── /view-image Command ───────────────────────────────────────────────
+	pi.registerCommand("view-image", {
+		description: "使用 Sophnet 视觉模型理解图片。用法: /view-image <路径> [模型]",
+		handler: async (args, ctx) => {
+			await ctx.waitForIdle();
+
+			const key = resolveApiKey();
+			if (!key) {
+				ctx.ui.notify("错误：未配置 Sophnet API Key", "error");
+				return;
+			}
+
+			if (!args?.trim()) {
+				ctx.ui.notify("用法: /view-image <图片路径> [模型名称]\n可选模型: " + VISION_MODELS.join(", "), "info");
+				return;
+			}
+
+			const parts = args.trim().split(/\s+/);
+			const imagePath = parts[0];
+			const model = parts[1] ?? DEFAULT_VISION_MODEL;
+
+			ctx.ui.notify(`正在使用 ${model} 分析图片...`, "info");
+
+			try {
+				const result = await describeImage(imagePath, model, "请详细描述这张图片的内容，包括其中的文字、界面元素、图表数据等所有可见信息。", key);
+				const footer = `\n\n(${model}, 图片token: ${result.imageTokens}, 总token: ${result.totalTokens})`;
+				ctx.ui.notify(result.text + footer, "info");
+			} catch (err: any) {
+				ctx.ui.notify(`图片分析失败: ${err.message}`, "error");
+			}
+		},
 	});
 
 	// ── Billing State ─────────────────────────────────────────────────────
