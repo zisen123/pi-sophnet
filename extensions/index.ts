@@ -98,6 +98,7 @@ const SHARED_COMPAT = {
 	maxTokensField: "max_tokens" as const,
 	supportsReasoningEffort: true,
 	thinkingFormat: "deepseek" as const,
+	requiresReasoningContentOnAssistantMessages: true,
 };
 
 const DEEPSEEK_THINKING = { off: "disabled", minimal: null, low: "low", medium: "medium", high: "high", xhigh: "max" };

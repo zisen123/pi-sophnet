@@ -1,8 +1,10 @@
 {
   "name": "pi-sophnet",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Sophnet provider extension for pi — register Sophnet models, display billing info in the status bar",
-  "keywords": ["pi-package"],
+  "keywords": [
+    "pi-package"
+  ],
   "license": "MIT",
   "author": "zisen",
   "repository": {
@@ -10,9 +12,13 @@
     "url": "https://github.com/zisen123/pi-sophnet"
   },
   "pi": {
-    "extensions": ["./extensions"]
+    "extensions": [
+      "./extensions"
+    ]
   },
-  "files": ["extensions/"],
+  "files": [
+    "extensions/"
+  ],
   "peerDependencies": {
     "@earendil-works/pi-coding-agent": "*",
     "typebox": "*"
