@@ -76,8 +76,6 @@ function monthStart(d: Date) {
 	return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
 }
 function fmtCNY(n: number): string {
-	if (n >= 10000) return `${(n / 10000).toFixed(1)}w`;
-	if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
 	return n.toFixed(2);
 }
 function renderBilling(s: BillingState | null, err: string | null, theme: any): string {
