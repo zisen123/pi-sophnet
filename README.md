@@ -18,8 +18,10 @@ Set your Sophnet API key using one of:
 ## Features
 
 - **Provider registration** — Adds the Sophnet provider with DeepSeek, GLM, MiniMax, Kimi, and Qwen models
-- **Status bar** — Shows balance (¥), monthly cost (M), and today's cost (D), refreshed every 5 minutes and after each agent turn
+- **Status bar** — Shows balance (¥), monthly cost, and today's cost, refreshed every 5 minutes and after each agent turn
 - **`/sophnet-balance` command** — Detailed billing breakdown with paid vs. gift balance
+- **`describe_image` tool** — LLM-callable tool for image understanding via Sophnet vision models. The LLM automatically calls this tool whenever the user mentions an image file (png, jpg, gif, webp, bmp), avoiding guesswork about image content
+- **`/view-image` command** — Manual command to analyze images: `/view-image <path> [model]`
 
 ## Models
 
@@ -31,6 +33,42 @@ Set your Sophnet API key using one of:
 | MiniMax-M3 | 512K | ¥2.1 / ¥8.4 |
 | Kimi-K2.6 | 256K | ¥6.5 / ¥27 |
 | qwen3.7-max | 200K | ¥6 / ¥18 |
+
+## Image Understanding
+
+Use the `describe_image` tool (LLM) or `/view-image` command (manual) to analyze images with Sophnet vision models.
+
+### Tool: `describe_image`
+
+The LLM automatically calls this tool when the user references an image file.
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `path` | Yes | Local path to the image file |
+| `model` | No | Vision model name (default: `qwen3-vl-flash`) |
+| `prompt` | No | Custom analysis prompt (default: detailed description) |
+
+### Command: `/view-image`
+
+```
+/view-image <path> [model]
+```
+
+Example:
+```
+/view-image screenshot.png qwen3-vl-plus
+```
+
+### Vision Models
+
+| Model |
+|-------|
+| `qwen3-vl-flash` *(default)* |
+| `qwen3-vl-plus` |
+| `Qwen3-VL-235B-A22B-Instruct` |
+| `GLM-4.6V` |
+| `GLM-5V-Turbo` |
+| `Doubao-Seed-1.6-vision` |
 
 ## License
 
