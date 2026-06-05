@@ -247,7 +247,6 @@ export default function (pi: ExtensionAPI) {
 		baseUrl: "https://www.sophnet.com/api/open-apis/v1",
 		apiKey: apiKey || "$SOPHNET_API_KEY",
 		api: "openai-completions",
-		compat: SHARED_COMPAT,
 		models: SOPHNET_MODELS,
 	});
 
