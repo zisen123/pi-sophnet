@@ -361,11 +361,6 @@ export default function (pi: ExtensionAPI) {
 		ctx.ui.setStatus(STATUS_KEY, renderBilling(billing, billingErr, ctx.ui.theme));
 	});
 
-	// Refresh after each agent turn
-	pi.on("turn_end", async (_event, ctx) => {
-		await refreshBilling();
-		ctx.ui.setStatus(STATUS_KEY, renderBilling(billing, billingErr, ctx.ui.theme));
-	});
 
 	// Cleanup
 	pi.on("session_shutdown", async () => {
